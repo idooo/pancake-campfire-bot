@@ -1,3 +1,5 @@
+import requests
+import re
 from camplight import Request, Campfire
 from time import sleep
 
@@ -7,6 +9,8 @@ from time import sleep
 # blame somebody
 
 class Bot():
+
+    RE_URL = re.compile("<url>([^<]*)</url>", re.MULTILINE + re.IGNORECASE)
 
     def __init__(self, url, api_key, room=False):
 
@@ -18,19 +22,12 @@ class Bot():
 
         self.account = self.campfire.account()
         self.rooms = self.campfire.rooms()
-        self.room = ''
-
-        print self.rooms
+        self.room = None
 
         if room:
             self.joinRoom(room)
 
-    def joinRoom(self, room):
-        self.room = room
-        room = self.campfire.room(room)
-        room.join()
-
-    def getMessages(self, messages, last_id):
+    def _getMessages(self, messages, last_id):
         new_messages = [];
         for i in xrange(len(messages), 0, -1):
             if messages[i-1]['id'] > last_id:
@@ -38,31 +35,53 @@ class Bot():
 
         return new_messages
 
+    def _cmdGetRandomCatGIF(self):
+        message = "Can't connect to cat API =("
+        params = {'format': 'xml', 'type': 'gif'}
+
+        r = requests.get('http://thecatapi.com/api/images/get', params=params)
+
+        if r.status_code == 200:
+            response = r.text
+
+            res = re.search(self.RE_URL, response)
+            if res:
+                message = res.groups()[0]
+
+        self.room.speak(message)
+
+    def joinRoom(self, room):
+        self.room = self.campfire.room(room)
+        self.room.join()
+
     def start(self):
+
+        actions = {
+            '/cat': self._cmdGetRandomCatGIF
+        }
 
         msgs = self.room.recent();
         last_id = msgs[-1]['id'];
 
         while True:
 
-            print 'check'
+            print '.'
 
             msgs = self.room.recent();
-            messages = self.getMessages(msgs, last_id)
+            messages = self._getMessages(msgs, last_id)
 
             if messages:
                 last_id = msgs[-1]['id'];
 
             command = None
             for message in messages:
-                if message['body'] and '/clear' in message['body']:
-                    command = 'clear'
+                if message['body']:
+
+                    for action_name in actions:
+                        if action_name in message['body']:
+                            actions[action_name]()
 
             if command:
-                if command == 'clear':
-                    for i in range(0,10):
-                        self.room.speak('.')
-
-                    print 'command', command
+                print 'command', command
 
             sleep(2);

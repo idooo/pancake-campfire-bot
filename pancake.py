@@ -16,8 +16,8 @@ if __name__ == "__main__":
 
     bot = library.Bot(
         conf.credentials['url'],
-        conf.credentials['api'],
-        conf.credentials['room']
+        conf.credentials['api']
     )
 
+    bot.joinRoom(conf.credentials['room'])
     bot.start()
