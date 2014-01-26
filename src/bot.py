@@ -1,5 +1,6 @@
 import requests
 import re
+import random
 from ec2_helper import EC2Helper
 from camplight import Request, Campfire
 from time import sleep
@@ -8,8 +9,9 @@ from time import sleep
 # + get staging status
 # + chuck http://api.icndb.com/jokes/random?limitTo=[nerdy]
 # help
+# roll
 # say random phrase
-# blame somebody
+# + blame somebody
 # stop staging
 
 class Bot():
@@ -33,9 +35,7 @@ class Bot():
         self.available_rooms = self.campfire.rooms()
 
         if rooms:
-            self.rooms = rooms.split(',')
-            for room in self.rooms:
-                self.joinRoom(room)
+            self.joinRooms(rooms)
 
         if aws:
             self.__awsInit(aws)
@@ -106,16 +106,29 @@ class Bot():
         room.speak(short_status)
         room.speak(message)
 
+    def __cmdBlameSomebody(self, room):
+        message = '{}, this is your fault!'
+
+        users = room.status()['users']
+        username = random.choice(users)['name']
+
+        room.speak(message.format(username))
+
+    def joinRooms(self, rooms):
+        self.rooms = rooms.split(',')
+        for room in self.rooms:
+            self.joinRoom(room)
+
     def joinRoom(self, room):
         self.joined_rooms.update({room: self.campfire.room(room)})
         self.joined_rooms[room].join()
 
     def start(self):
-
         actions = {
             '/cat': self.__cmdGetRandomCatGIF,
             '/staging': self.__cmdGetStagingStatus,
-            '/chuck': self.__cmdGetRandomChuckPhrase
+            '/chuck': self.__cmdGetRandomChuckPhrase,
+            '/blame': self.__cmdBlameSomebody
         }
 
         last_ids = {}
@@ -146,4 +159,4 @@ class Bot():
                 if command:
                     print 'command', command
 
-            sleep(2);
+            sleep(2)
