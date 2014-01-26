@@ -8,7 +8,7 @@ from time import sleep
 # + get random cat gif (http://thecatapi.com/api/images/get?format=src&type=gif)
 # + get staging status
 # + chuck http://api.icndb.com/jokes/random?limitTo=[nerdy]
-# help
+# + help
 # roll
 # say random phrase
 # + blame somebody
@@ -22,6 +22,8 @@ class Bot():
     ec2 = None
     rooms = None
     joined_rooms = {}
+    actions = {}
+    user = {}
 
     def __init__(self, url, api_key, rooms=False, aws=False):
 
@@ -34,11 +36,40 @@ class Bot():
         self.account = self.campfire.account()
         self.available_rooms = self.campfire.rooms()
 
+        self.user = self.campfire.user()
+
         if rooms:
             self.joinRooms(rooms)
 
         if aws:
             self.__awsInit(aws)
+
+        self.__setActions()
+
+    def __setActions(self):
+
+        self.actions = {
+            '/help': {
+                'action': self.__cmdHelp,
+                'help': 'Show this help'
+            },
+            '/cat': {
+                'action': self.__cmdGetRandomCatGIF,
+                'help': 'Post random cat gif'
+            },
+            '/staging': {
+                'action': self.__cmdGetStagingStatus,
+                'help': 'Get staging servers status'
+            },
+            '/chuck': {
+                'action': self.__cmdGetRandomChuckPhrase,
+                'help': 'Post random Chuck\'s phrase'
+            },
+            '/blame': {
+                'action': self.__cmdBlameSomebody,
+                'help': 'Blame somebody'
+            }
+        }
 
     def __awsInit(self, credentials):
         if not ('secret_key' in credentials and 'access_key' in credentials):
@@ -53,6 +84,16 @@ class Bot():
                 new_messages.append(messages[i-1])
 
         return new_messages
+
+    def __cmdHelp(self, room):
+        message = 'Pancake bot, here are available commands:\n'
+        for action_name in self.actions.keys():
+            message += action_name
+            if 'help' in self.actions[action_name]:
+                message += ' - ' + self.actions[action_name]['help']
+            message += '\n'
+
+        room.speak(message)
 
     def __cmdGetRandomChuckPhrase(self, room):
         message = "Can't connect to Chuck API =("
@@ -110,7 +151,12 @@ class Bot():
         message = '{}, this is your fault!'
 
         users = room.status()['users']
-        username = random.choice(users)['name']
+        usernames = []
+        for user in users:
+            if user['name'] != self.user['name']:
+                usernames.append(user['name'])
+
+        username = random.choice(usernames)
 
         room.speak(message.format(username))
 
@@ -124,12 +170,6 @@ class Bot():
         self.joined_rooms[room].join()
 
     def start(self):
-        actions = {
-            '/cat': self.__cmdGetRandomCatGIF,
-            '/staging': self.__cmdGetStagingStatus,
-            '/chuck': self.__cmdGetRandomChuckPhrase,
-            '/blame': self.__cmdBlameSomebody
-        }
 
         last_ids = {}
         for room_name in self.joined_rooms:
@@ -150,11 +190,10 @@ class Bot():
 
                 command = None
                 for message in messages:
-                    if message['body']:
-
-                        for action_name in actions:
+                    if message['body'] and message['user_id'] != self.user['id']:
+                        for action_name in self.actions:
                             if action_name in message['body']:
-                                actions[action_name](self.joined_rooms[room])
+                                self.actions[action_name]['action'](self.joined_rooms[room])
 
                 if command:
                     print 'command', command
