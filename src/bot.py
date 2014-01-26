@@ -6,6 +6,7 @@ from time import sleep
 
 # + get random cat gif (http://thecatapi.com/api/images/get?format=src&type=gif)
 # + get staging status
+# + chuck http://api.icndb.com/jokes/random?limitTo=[nerdy]
 # help
 # say random phrase
 # blame somebody
@@ -50,6 +51,20 @@ class Bot():
 
         return new_messages
 
+    def __cmdGetRandomChuckPhrase(self):
+        message = "Can't connect to Chuck API =("
+        params = {'limitTo': '[nerdy]'}
+
+        r = requests.get('http://api.icndb.com/jokes/random', params=params)
+
+        if r.status_code == 200:
+            response = r.json()
+
+            if response['type'] == 'success':
+                message = response['value']['joke']
+
+        self.room.speak(message)
+
     def __cmdGetRandomCatGIF(self):
         message = "Can't connect to cat API =("
         params = {'format': 'xml', 'type': 'gif'}
@@ -91,7 +106,8 @@ class Bot():
 
         actions = {
             '/cat': self.__cmdGetRandomCatGIF,
-            '/staging': self.__cmdGetStagingStatus
+            '/staging': self.__cmdGetStagingStatus,
+            '/chuck': self.__cmdGetRandomChuckPhrase
         }
 
         msgs = self.room.recent();
