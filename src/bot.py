@@ -1,18 +1,25 @@
 import requests
 import re
+from ec2_helper import EC2Helper
 from camplight import Request, Campfire
 from time import sleep
 
-# get random cat gif (http://thecatapi.com/api/images/get?format=src&type=gif)
+# + get random cat gif (http://thecatapi.com/api/images/get?format=src&type=gif)
+# + get staging status
+# help
 # say random phrase
-# get staging status
 # blame somebody
+# stop staging
 
 class Bot():
 
     RE_URL = re.compile("<url>([^<]*)</url>", re.MULTILINE + re.IGNORECASE)
+    EC2_DOWN_CODE = 80
 
-    def __init__(self, url, api_key, room=False):
+    ec2 = None
+    room = None
+
+    def __init__(self, url, api_key, room=False, aws=False):
 
         self.url = url
         self.api_key = api_key
@@ -22,12 +29,20 @@ class Bot():
 
         self.account = self.campfire.account()
         self.rooms = self.campfire.rooms()
-        self.room = None
 
         if room:
             self.joinRoom(room)
 
-    def _getMessages(self, messages, last_id):
+        if aws:
+            self.__awsInit(aws)
+
+    def __awsInit(self, credentials):
+        if not ('secret_key' in credentials and 'access_key' in credentials):
+            return False
+
+        self.ec2 = EC2Helper(credentials['access_key'], credentials['secret_key'])
+
+    def __getMessages(self, messages, last_id):
         new_messages = [];
         for i in xrange(len(messages), 0, -1):
             if messages[i-1]['id'] > last_id:
@@ -35,7 +50,7 @@ class Bot():
 
         return new_messages
 
-    def _cmdGetRandomCatGIF(self):
+    def __cmdGetRandomCatGIF(self):
         message = "Can't connect to cat API =("
         params = {'format': 'xml', 'type': 'gif'}
 
@@ -50,6 +65,24 @@ class Bot():
 
         self.room.speak(message)
 
+    def __cmdGetStagingStatus(self):
+        is_up = False
+        message = ''
+        short_status = 'Staging servers status: '
+
+        instances = self.ec2.getInstanceStatuses()
+        for instance in instances:
+            is_up = is_up or instance['state_code'] != self.EC2_DOWN_CODE
+            message += instance['name'] + ': ' + instance['state'] + '\n'
+
+        if is_up:
+            short_status += 'RUNNING'
+        else:
+            short_status += 'STOPPED'
+
+        self.room.speak(short_status)
+        self.room.speak(message)
+
     def joinRoom(self, room):
         self.room = self.campfire.room(room)
         self.room.join()
@@ -57,7 +90,8 @@ class Bot():
     def start(self):
 
         actions = {
-            '/cat': self._cmdGetRandomCatGIF
+            '/cat': self.__cmdGetRandomCatGIF,
+            '/staging': self.__cmdGetStagingStatus
         }
 
         msgs = self.room.recent();
@@ -68,7 +102,7 @@ class Bot():
             print '.'
 
             msgs = self.room.recent();
-            messages = self._getMessages(msgs, last_id)
+            messages = self.__getMessages(msgs, last_id)
 
             if messages:
                 last_id = msgs[-1]['id'];

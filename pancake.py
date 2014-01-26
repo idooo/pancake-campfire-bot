@@ -16,7 +16,8 @@ if __name__ == "__main__":
 
     bot = library.Bot(
         conf.credentials['url'],
-        conf.credentials['api']
+        conf.credentials['api'],
+        aws=conf.aws
     )
 
     bot.joinRoom(conf.credentials['room'])

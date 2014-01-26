@@ -8,7 +8,8 @@ import inspect
 class Settings():
 
     rules = {
-        'credentials': ['api', 'url', 'room']
+        'credentials': ['api', 'url', 'room'],
+        'aws': ['access_key', 'secret_key']
     }
 
     default_conf_name = 'example.conf'
