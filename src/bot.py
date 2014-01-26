@@ -18,9 +18,10 @@ class Bot():
     EC2_DOWN_CODE = 80
 
     ec2 = None
-    room = None
+    rooms = None
+    joined_rooms = {}
 
-    def __init__(self, url, api_key, room=False, aws=False):
+    def __init__(self, url, api_key, rooms=False, aws=False):
 
         self.url = url
         self.api_key = api_key
@@ -29,10 +30,12 @@ class Bot():
         self.campfire = Campfire(request)
 
         self.account = self.campfire.account()
-        self.rooms = self.campfire.rooms()
+        self.available_rooms = self.campfire.rooms()
 
-        if room:
-            self.joinRoom(room)
+        if rooms:
+            self.rooms = rooms.split(',')
+            for room in self.rooms:
+                self.joinRoom(room)
 
         if aws:
             self.__awsInit(aws)
@@ -51,7 +54,7 @@ class Bot():
 
         return new_messages
 
-    def __cmdGetRandomChuckPhrase(self):
+    def __cmdGetRandomChuckPhrase(self, room):
         message = "Can't connect to Chuck API =("
         params = {'limitTo': '[nerdy]'}
 
@@ -63,9 +66,9 @@ class Bot():
             if response['type'] == 'success':
                 message = response['value']['joke']
 
-        self.room.speak(message)
+        room.speak(message)
 
-    def __cmdGetRandomCatGIF(self):
+    def __cmdGetRandomCatGIF(self, room):
         message = "Can't connect to cat API =("
         params = {'format': 'xml', 'type': 'gif'}
 
@@ -78,9 +81,14 @@ class Bot():
             if res:
                 message = res.groups()[0]
 
-        self.room.speak(message)
+        room.speak(message)
 
-    def __cmdGetStagingStatus(self):
+    def __cmdGetStagingStatus(self, room):
+
+        if not self.ec2:
+            room.speak('Can\'t connect to AWS API =(')
+            return False
+
         is_up = False
         message = ''
         short_status = 'Staging servers status: '
@@ -95,12 +103,12 @@ class Bot():
         else:
             short_status += 'STOPPED'
 
-        self.room.speak(short_status)
-        self.room.speak(message)
+        room.speak(short_status)
+        room.speak(message)
 
     def joinRoom(self, room):
-        self.room = self.campfire.room(room)
-        self.room.join()
+        self.joined_rooms.update({room: self.campfire.room(room)})
+        self.joined_rooms[room].join()
 
     def start(self):
 
@@ -110,28 +118,32 @@ class Bot():
             '/chuck': self.__cmdGetRandomChuckPhrase
         }
 
-        msgs = self.room.recent();
-        last_id = msgs[-1]['id'];
+        last_ids = {}
+        for room_name in self.joined_rooms:
+            msgs = self.joined_rooms[room_name].recent();
+            last_ids.update({room_name: msgs[-1]['id']});
 
         while True:
 
             print '.'
 
-            msgs = self.room.recent();
-            messages = self.__getMessages(msgs, last_id)
+            for room in self.joined_rooms:
 
-            if messages:
-                last_id = msgs[-1]['id'];
+                msgs = self.joined_rooms[room].recent();
+                messages = self.__getMessages(msgs, last_ids[room])
 
-            command = None
-            for message in messages:
-                if message['body']:
+                if messages:
+                    last_ids[room] = msgs[-1]['id'];
 
-                    for action_name in actions:
-                        if action_name in message['body']:
-                            actions[action_name]()
+                command = None
+                for message in messages:
+                    if message['body']:
 
-            if command:
-                print 'command', command
+                        for action_name in actions:
+                            if action_name in message['body']:
+                                actions[action_name](self.joined_rooms[room])
+
+                if command:
+                    print 'command', command
 
             sleep(2);
