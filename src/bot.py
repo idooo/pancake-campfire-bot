@@ -173,29 +173,34 @@ class Bot():
 
         last_ids = {}
         for room_name in self.joined_rooms:
-            msgs = self.joined_rooms[room_name].recent();
-            last_ids.update({room_name: msgs[-1]['id']});
+            msgs = self.joined_rooms[room_name].recent()
+            last_ids.update({room_name: msgs[-1]['id']})
 
         while True:
 
             print '.'
 
             for room in self.joined_rooms:
+                
+                try:
+                    msgs = self.joined_rooms[room].recent()
 
-                msgs = self.joined_rooms[room].recent();
-                messages = self.__getMessages(msgs, last_ids[room])
+                    messages = self.__getMessages(msgs, last_ids[room])
 
-                if messages:
-                    last_ids[room] = msgs[-1]['id'];
+                    if messages:
+                        last_ids[room] = msgs[-1]['id']
 
-                command = None
-                for message in messages:
-                    if message['body'] and message['user_id'] != self.user['id']:
-                        for action_name in self.actions:
-                            if action_name in message['body']:
-                                self.actions[action_name]['action'](self.joined_rooms[room])
+                    command = None
+                    for message in messages:
+                        if message['body'] and message['user_id'] != self.user['id']:
+                            for action_name in self.actions:
+                                if action_name in message['body']:
+                                    self.actions[action_name]['action'](self.joined_rooms[room])
 
-                if command:
-                    print 'command', command
+                    if command:
+                        print 'command', command
+
+                except Exception, e:
+                    print str(e)
 
             sleep(2)
