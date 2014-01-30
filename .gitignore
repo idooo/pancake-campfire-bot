@@ -37,3 +37,7 @@ nosetests.xml
 
 .idea/
 conf/test.conf
+
+conf/sandbox.conf
+
+nohup.out
