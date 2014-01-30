@@ -28,8 +28,6 @@ class EC2Helper(AWSBasic):
             print 'Invalid region name'
             return False
 
-        self.__getInstances()
-
     def __getInstances(self):
         """
         Get instances list from AWS, cache it
@@ -46,6 +44,9 @@ class EC2Helper(AWSBasic):
         self.instances = our_instances
 
     def getInstanceStatuses(self):
+        
+        self.__getInstances()
+
         instances = []
 
         for instance in self.instances:
