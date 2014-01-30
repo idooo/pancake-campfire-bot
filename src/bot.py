@@ -68,6 +68,10 @@ class Bot():
             '/blame': {
                 'action': self.__cmdBlameSomebody,
                 'help': 'Blame somebody'
+            },
+            '/pony': {
+                'action': self.__cmdGetPony,
+                'help': 'Get pony'
             }
         }
 
@@ -159,6 +163,11 @@ class Bot():
         username = random.choice(usernames)
 
         room.speak(message.format(username))
+
+    def __cmdGetPony(self, room):
+        max = 160
+        message = "http://ponyfac.es/{}/full.jpg".format(random.randint(1, max))
+        room.speak(message)
 
     def joinRooms(self, rooms):
         self.rooms = rooms.split(',')
