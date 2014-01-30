@@ -1,6 +1,7 @@
 import requests
 import re
 import random
+import inspect
 from ec2_helper import EC2Helper
 from camplight import Request, Campfire
 from time import sleep
@@ -24,6 +25,8 @@ class Bot():
     joined_rooms = {}
     actions = {}
     user = {}
+
+    _users = {}
 
     def __init__(self, url, api_key, rooms=False, aws=False):
 
@@ -71,7 +74,11 @@ class Bot():
             },
             '/pony': {
                 'action': self.__cmdGetPony,
-                'help': 'Get pony'
+                'help': 'Post pony image'
+            },
+            '/rps': {
+                'action': self.__cmdRPS,
+                'help': 'Rock - Paper - Scissors - Lizard - Spock (type /rps help)'
             }
         }
 
@@ -88,6 +95,20 @@ class Bot():
                 new_messages.append(messages[i-1])
 
         return new_messages
+
+    def __getUser(self, room, user_id):
+
+        if str(user_id) in self._users:
+            return self._users[str(user_id)]
+        else:
+            users = room.status()['users']
+            for user in users:
+                self._users[str(user['id'])] = user['name']
+
+            if str(user_id) in self._users:
+                return self._users[str(user_id)]
+
+        return 'Unknown'
 
     def __cmdHelp(self, room):
         message = 'Pancake bot, here are available commands:\n'
@@ -169,6 +190,18 @@ class Bot():
         message = "http://ponyfac.es/{}/full.jpg".format(random.randint(1, max))
         room.speak(message)
 
+    def __cmdRPS(self, room, user_id, message):
+
+        if 'help' in message:
+            room.speak('Rock (:punch:), Paper (:hand:), Scissors (:v:), Lizard (:dragon:), Spock (:boy:)')
+            room.speak('http://a.tgcdn.net/images/products/additional/large/db2e_lizard_spock.jpg')
+            return False
+
+        username = self.__getUser(room, user_id)
+        options = [':hand:', ':v:', ':punch:', ':dragon:', ':boy: - (spock)']
+        response = '{0} - {1}'.format(username, random.choice(options))
+        room.speak(response)
+
     def joinRooms(self, rooms):
         self.rooms = rooms.split(',')
         for room in self.rooms:
@@ -201,10 +234,21 @@ class Bot():
 
                     command = None
                     for message in messages:
+
                         if message['body'] and message['user_id'] != self.user['id']:
                             for action_name in self.actions:
+
+                                fields = set(inspect.getargspec(self.actions[action_name]['action'])[0])
+                                args = {'room': self.joined_rooms[room]}
+
+                                if 'user_id' in fields:
+                                    args.update({'user_id': message['user_id']})
+
+                                if 'message' in fields:
+                                    args.update({'message': message['body']})
+
                                 if action_name in message['body']:
-                                    self.actions[action_name]['action'](self.joined_rooms[room])
+                                    self.actions[action_name]['action'](**args)
 
                     if command:
                         print 'command', command
