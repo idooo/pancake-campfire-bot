@@ -79,6 +79,10 @@ class Bot():
             '/rps': {
                 'action': self.__cmdRPS,
                 'help': 'Rock - Paper - Scissors - Lizard - Spock (type /rps help)'
+            },
+            '/?': {
+                'action': self.__cmdAsk,
+                'help': 'Ask me a question'
             }
         }
 
@@ -200,6 +204,12 @@ class Bot():
         username = self.__getUser(room, user_id)
         options = [':hand:', ':v:', ':punch:', ':dragon:', ':boy: - (spock)']
         response = '{0} - {1}'.format(username, random.choice(options))
+        room.speak(response)
+
+    def __cmdAsk(self, room, user_id):
+        username = self.__getUser(room, user_id)
+        options = ['yes', 'no', 'no way!', 'yep!']
+        response = '{0}, {1}'.format(username, random.choice(options))
         room.speak(response)
 
     def joinRooms(self, rooms):
