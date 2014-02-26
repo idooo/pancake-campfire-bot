@@ -87,6 +87,10 @@ class Bot():
                 'action': self._cmdArnold,
                 'help': 'Arnold Schwarzenegger\'s phrase (/! name)'
             },
+            '/xkcd': {
+                'action': self.__cmdXKCD,
+                'help': 'Get random xkcd comics'
+            },
             '/?': {
                 'action': self.__cmdAsk,
                 'help': 'Ask me a question'
@@ -251,6 +255,20 @@ class Bot():
             username = self.__getRandomUser(room)
 
         room.speak(phrase.format(username))
+
+    def __cmdXKCD(self, room):
+        max_value = 1335
+        value = random.randint(1, max_value)
+
+        r = requests.get('http://xkcd.com/{}/info.0.json'.format(value))
+
+        if r.status_code == 200:
+            response = r.json()
+            room.speak(response['img'])
+            room.speak(response['alt'])
+
+        else:
+            room.speak("Can't connect to xkcd API =(")
 
     def joinRooms(self, rooms):
         self.rooms = rooms.split(',')
