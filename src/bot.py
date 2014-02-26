@@ -6,6 +6,9 @@ from ec2_helper import EC2Helper
 from camplight import Request, Campfire
 from time import sleep
 
+# For Arnold
+from _arnold_phrases import ARNOLD_PHRASES
+
 # + get random cat gif (http://thecatapi.com/api/images/get?format=src&type=gif)
 # + get staging status
 # + chuck http://api.icndb.com/jokes/random?limitTo=[nerdy]
@@ -80,6 +83,10 @@ class Bot():
                 'action': self.__cmdRPS,
                 'help': 'Rock - Paper - Scissors - Lizard - Spock (type /rps help)'
             },
+            '/!': {
+                'action': self._cmdArnold,
+                'help': 'Arnold Schwarzenegger\'s phrase (/! name)'
+            },
             '/?': {
                 'action': self.__cmdAsk,
                 'help': 'Ask me a question'
@@ -113,6 +120,34 @@ class Bot():
                 return self._users[str(user_id)]
 
         return 'Unknown'
+
+    def __getRandomUser(self, room):
+        users = room.status()['users']
+        usernames = []
+        for user in users:
+            if user['name'] != self.user['name']:
+                usernames.append(user['name'])
+
+        return random.choice(usernames)
+
+    def __getMentionedUser(self, room, message):
+        message_parts = message.split()
+        username = None
+
+        if len(message_parts) > 1:
+            # create regexp to find a user
+            message_parts[1] = re.compile(message_parts[1], re.IGNORECASE)
+
+            users = room.status()['users']
+            usernames = []
+            for user in users:
+                if user['name'] != self.user['name'] and re.search(message_parts[1], user['name']):
+                    usernames.append(user['name'])
+
+            if usernames:
+                username = random.choice(usernames)
+
+        return username
 
     def __cmdHelp(self, room):
         message = 'Pancake bot, here are available commands:\n'
@@ -178,14 +213,7 @@ class Bot():
 
     def __cmdBlameSomebody(self, room):
         message = '{}, this is your fault!'
-
-        users = room.status()['users']
-        usernames = []
-        for user in users:
-            if user['name'] != self.user['name']:
-                usernames.append(user['name'])
-
-        username = random.choice(usernames)
+        username = self.__getRandomUser(room)
 
         room.speak(message.format(username))
 
@@ -211,6 +239,18 @@ class Bot():
         options = ['yes', 'no', 'no way!', 'yep!']
         response = '{0}, {1}'.format(username, random.choice(options))
         room.speak(response)
+
+    def _cmdArnold(self, room, message):
+        phrase = random.choice(ARNOLD_PHRASES)
+
+        # try to get mentioned username
+        username = self.__getMentionedUser(room, message)
+
+        # if not - we will get random username
+        if not username:
+            username = self.__getRandomUser(room)
+
+        room.speak(phrase.format(username))
 
     def joinRooms(self, rooms):
         self.rooms = rooms.split(',')
