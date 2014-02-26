@@ -84,7 +84,7 @@ class Bot():
                 'help': 'Rock - Paper - Scissors - Lizard - Spock (type /rps help)'
             },
             '/!': {
-                'action': self._cmdArnold,
+                'action': self.__cmdArnold,
                 'help': 'Arnold Schwarzenegger\'s phrase (/! name)'
             },
             '/xkcd': {
@@ -248,7 +248,7 @@ class Bot():
         response = '{0}, {1}'.format(username, random.choice(options))
         room.speak(response)
 
-    def _cmdArnold(self, room, message):
+    def __cmdArnold(self, room, message):
         phrase = random.choice(ARNOLD_PHRASES)
 
         # try to get mentioned username
